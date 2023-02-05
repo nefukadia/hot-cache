@@ -1,0 +1,4 @@
+listen: 0.0.0.0:6857
+auth: 123456
+heartbeat: 180
+read_buffer: 1024

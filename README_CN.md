@@ -1,5 +1,4 @@
-[English](https://github.com/nefukadia/hot-cache/blob/dev/README.md) |
-[简体中文](https://github.com/nefukadia/hot-cache/blob/dev/README_CN.md)
+[English](README.md) | [简体中文](README_CN.md)
 
 # HotCache
 
