@@ -2,17 +2,14 @@ package initialize
 
 import (
 	"gopkg.in/yaml.v2"
-	"hot-cache/cache"
 	"hot-cache/config"
 	"hot-cache/global"
 	"os"
 )
 
-const ConfigFile = "./config.yaml"
-
-func InitGlobal() error {
+func InitGlobal(path string) error {
 	// init config
-	yamlFile, err := os.ReadFile(ConfigFile)
+	yamlFile, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -21,9 +18,6 @@ func InitGlobal() error {
 	if err != nil {
 		return err
 	}
-
-	// init cache
-	global.AppCache = cache.New()
 
 	return nil
 }

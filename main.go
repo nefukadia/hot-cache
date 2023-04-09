@@ -17,7 +17,7 @@ func main() {
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 
-	err := initialize.InitGlobal()
+	err := initialize.InitGlobal("./config.yaml")
 	if err != nil {
 		logs.Error(err)
 		return
@@ -35,6 +35,8 @@ func main() {
 	}
 	logs.Info("listening:", global.AppConfig.Listen)
 
+	sv := service.NewService()
+
 	go func() {
 		for {
 			conn, err := listen.AcceptTCP()
@@ -50,7 +52,7 @@ func main() {
 			if err != nil {
 				logs.Warning(err)
 			}
-			go service.Handle(conn)
+			go sv.Handle(conn)
 		}
 		logs.WarningWithoutStack("listening stop")
 	}()
