@@ -32,17 +32,6 @@ const (
 	OptionIncr
 	OptionDecr
 
-	OptionPushback
-	OptionFront
-	OptionDelInList
-	OptionIsInList
-	OptionRandomInList
-
-	OptionInsert
-	OptionDelInSet
-	OptionIsInSet
-	OptionRandomInSet
-
 	OptionAuth
 )
 
@@ -194,15 +183,6 @@ func (req *Request) parseCfgInteger() (map[byte]byte, error) {
 		OptionDel,
 		OptionIncr,
 		OptionDecr,
-		OptionPushback,
-		OptionFront,
-		OptionDelInList,
-		OptionIsInList,
-		OptionRandomInList,
-		OptionInsert,
-		OptionDelInSet,
-		OptionIsInSet,
-		OptionRandomInSet,
 		OptionAuth,
 	}) {
 		return nil, errors.New(fmt.Sprintf("%d not one of option number", ret[CfgOption]))

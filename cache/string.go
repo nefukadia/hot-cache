@@ -47,7 +47,7 @@ func (n *NormalCache) del(key string) bool {
 func (n *NormalCache) incr(key string) (int64, bool) {
 	value, remain, ok := n.get(key)
 	if !ok {
-		value = "0"
+		value = "1"
 		remain = permanent
 	}
 	num, err := strconv.ParseInt(value, 10, 64)
@@ -62,7 +62,7 @@ func (n *NormalCache) incr(key string) (int64, bool) {
 func (n *NormalCache) decr(key string) (int64, bool) {
 	value, remain, ok := n.get(key)
 	if !ok {
-		value = "0"
+		value = "-1"
 		remain = permanent
 	}
 	num, err := strconv.ParseInt(value, 10, 64)

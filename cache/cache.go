@@ -3,7 +3,7 @@ package cache
 import (
 	"hot-cache/cache/request"
 	"hot-cache/cache/response"
-	"hot-cache/common/set"
+	"hot-cache/common/number"
 	"hot-cache/common/strings"
 	"strconv"
 	"sync"
@@ -15,7 +15,7 @@ type Cache interface {
 }
 
 const (
-	permanent = -1
+	permanent = 31536000000
 )
 
 type stringValue struct {
@@ -25,24 +25,16 @@ type stringValue struct {
 
 type NormalCache struct {
 	stringMap map[string]stringValue
-	listMap   map[string][]string
-	setMap    map[string]set.Set[string]
-
-	stringMu sync.RWMutex
-	listMu   sync.RWMutex
-	setMu    sync.RWMutex
+	stringMu  sync.RWMutex
 }
 
 func NewNormalCache() Cache {
 	return &NormalCache{
 		stringMap: make(map[string]stringValue),
-		listMap:   make(map[string][]string),
-		setMap:    make(map[string]set.Set[string]),
 	}
 }
 
 func (n *NormalCache) Solve(req *request.Request) (resp *response.Response) {
-	// todo
 	resp = response.NewResp()
 	cfgIDHigh := req.Cfg[request.CfgIDHigh]
 	cfgIDLow := req.Cfg[request.CfgIDLow]
@@ -71,11 +63,10 @@ func (n *NormalCache) Solve(req *request.Request) (resp *response.Response) {
 			resp = nil
 		}
 		return
-	case request.OptionSet, request.OptionSetNX, request.OptionDel,
-		request.OptionIncr, request.OptionDecr:
+
+	case request.OptionSet:
 		n.stringMu.Lock()
 		defer n.stringMu.Unlock()
-		// todo
 		key, ok := req.Data[request.DataKey].(string)
 		if !ok {
 			err := resp.SetupError(cfgIDHigh, cfgIDLow, response.MissKey.Error())
@@ -100,34 +91,117 @@ func (n *NormalCache) Solve(req *request.Request) (resp *response.Response) {
 			}
 			return
 		}
-		info := "false"
+		ret := "false"
 		if n.set(key, value, expire) {
-			info = "true"
+			ret = "true"
 		}
-		err := resp.SetupValue(cfgIDHigh, cfgIDLow, nil, strings.Pointer(info))
+		err := resp.SetupValue(cfgIDHigh, cfgIDLow, strings.Pointer(ret), nil)
 		if err != nil {
 			resp = nil
 		}
 		return
-	case request.OptionFront, request.OptionIsInList, request.OptionRandomInList:
-		n.listMu.RLock()
-		defer n.listMu.RUnlock()
 
-	case request.OptionPushback, request.OptionDelInList:
-		n.listMu.Lock()
-		defer n.listMu.Unlock()
+	case request.OptionSetNX:
+		n.stringMu.Lock()
+		defer n.stringMu.Unlock()
+		key, ok := req.Data[request.DataKey].(string)
+		if !ok {
+			err := resp.SetupError(cfgIDHigh, cfgIDLow, response.MissKey.Error())
+			if err != nil {
+				resp = nil
+			}
+			return
+		}
+		value, ok := req.Data[request.DataValue].(string)
+		if !ok {
+			err := resp.SetupError(cfgIDHigh, cfgIDLow, response.MissValue.Error())
+			if err != nil {
+				resp = nil
+			}
+			return
+		}
+		expire, ok := req.Data[request.DataExpire].(int64)
+		if !ok {
+			err := resp.SetupError(cfgIDHigh, cfgIDLow, response.MissExpire.Error())
+			if err != nil {
+				resp = nil
+			}
+			return
+		}
+		ret := "false"
+		if n.setNX(key, value, expire) {
+			ret = "true"
+		}
+		err := resp.SetupValue(cfgIDHigh, cfgIDLow, strings.Pointer(ret), nil)
+		if err != nil {
+			resp = nil
+		}
+		return
 
-	case request.OptionIsInSet, request.OptionRandomInSet:
-		n.setMu.RLock()
-		defer n.setMu.RUnlock()
+	case request.OptionDel:
+		n.stringMu.Lock()
+		defer n.stringMu.Unlock()
+		key, ok := req.Data[request.DataKey].(string)
+		if !ok {
+			err := resp.SetupError(cfgIDHigh, cfgIDLow, response.MissKey.Error())
+			if err != nil {
+				resp = nil
+			}
+			return
+		}
+		ret := "false"
+		if n.del(key) {
+			ret = "true"
+		}
+		err := resp.SetupValue(cfgIDHigh, cfgIDLow, strings.Pointer(ret), nil)
+		if err != nil {
+			resp = nil
+		}
+		return
 
-	case request.OptionInsert, request.OptionDelInSet:
-		n.setMu.Lock()
-		defer n.setMu.Unlock()
+	case request.OptionIncr:
+		n.stringMu.Lock()
+		defer n.stringMu.Unlock()
+		key, ok := req.Data[request.DataKey].(string)
+		if !ok {
+			err := resp.SetupError(cfgIDHigh, cfgIDLow, response.MissKey.Error())
+			if err != nil {
+				resp = nil
+			}
+			return
+		}
+		var ret int64
+		info := "false"
+		if ret, ok = n.incr(key); ok {
+			info = "true"
+		}
+		err := resp.SetupValue(cfgIDHigh, cfgIDLow, number.ToStringPtr(ret), strings.Pointer(info))
+		if err != nil {
+			resp = nil
+		}
+		return
 
-	case request.OptionAuth:
-
+	case request.OptionDecr:
+		n.stringMu.Lock()
+		defer n.stringMu.Unlock()
+		key, ok := req.Data[request.DataKey].(string)
+		if !ok {
+			err := resp.SetupError(cfgIDHigh, cfgIDLow, response.MissKey.Error())
+			if err != nil {
+				resp = nil
+			}
+			return
+		}
+		var ret int64
+		info := "false"
+		if ret, ok = n.decr(key); ok {
+			info = "true"
+		}
+		err := resp.SetupValue(cfgIDHigh, cfgIDLow, number.ToStringPtr(ret), strings.Pointer(info))
+		if err != nil {
+			resp = nil
+		}
+		return
 	}
-
 	return nil
 }
